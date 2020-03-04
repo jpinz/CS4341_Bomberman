@@ -201,6 +201,43 @@ class TestCharacter(CharacterEntity):
     # TODO 
     def a_star();
         pass
+    
+    def a_star(self, grid, k, start_y, start_x):
+		m, n = len(grid), len(grid[0])
+
+		if m + n - 2 <= k:
+			return (m + n - 2 , [], {})
+
+		came_from = {}
+
+		manhattan_distance = lambda y, x: m + n - y - x - 2
+		neighborhood = lambda y, x: [
+			(y, x) for y, x in [(y - 1, x), (y, x + 1), (y + 1, x), (y, x - 1)]
+			if 0 <= y < m and 0 <= x < n
+		]
+        
+		fringe_heap = [(manhattan_distance(start_y, start_x), 0, 0, start_y, start_x)]
+		min_eliminations = defaultdict(lambda: k + 1, {(0, 0): 0})
+
+		while fringe_heap:
+			estimation, steps, eliminations, curr_y, curr_x = heappop(fringe_heap)
+
+			if (curr_x, curr_y) == (2,2):
+				return (estimation, self.construct_path(came_from, (curr_y, curr_x), start_x, start_y), min_eliminations)
+
+			self.set_cell_color(curr_y, curr_x, Fore.RED + Back.GREEN)
+			if estimation - steps <= k - eliminations:
+				return (estimation, self.construct_path(came_from, (curr_y, curr_x), start_x, start_y), min_eliminations)
+            
+			for y, x in neighborhood(curr_y, curr_x):
+				next_eliminations = eliminations + grid[y][x]
+
+				if next_eliminations < min_eliminations[(y, x)]:
+					came_from[(y,x)] = (curr_y, curr_x)
+					heappush(fringe_heap, (steps + 1 + manhattan_distance(y, x), steps + 1, next_eliminations, y, x))
+					min_eliminations[(y, x)] = next_eliminations
+        
+		return (-1, [], {})
 
 
     # ------------------------------------------------------------------------------------------------------------------------/
