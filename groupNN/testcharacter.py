@@ -6,11 +6,32 @@ sys.path.insert(0, '../bomberman')
 from entity import CharacterEntity
 from colorama import Fore, Back
 
+# Import our stuff
+from heapq import heappush, heappop
+from collections import defaultdict
+
 
 class TestCharacter(CharacterEntity):
 
+    discount = 0.9
+
+    last_best_value = 0
+    last_monster_feature = 0
+    last_exit_feature = 0
+    last_cornered_feature = 0
+
+    last_x = 0
+    last_y = 0
+
+    f = open("weights.txt")
+    weights = f.read().splitlines()
+    w1=float(weights[0])
+    w2=float(weights[1])
+    w3=float(weights[2])
+    f.close()
+
     # Gives where the character can physically move
-    def find_available_moves(self, wrld, start_x, start_y):
+    def get_available_moves(self, wrld, start_x, start_y):
         finds = dict([(i, []) for i in range(7)])
 
         for deltaX in [-1, 0, 1]:
@@ -54,11 +75,12 @@ class TestCharacter(CharacterEntity):
                                 nf = finds[6]
                                 nf.append((deltaX, deltaY))
                                 finds[6] = nf
+
         # Return all the found cells
         return finds
 
     # Takes find_available_moves and filters out all of the moves that are deemed 'unsafe'
-    def find_safe_moves(self, wrld, surroundings, charloc):
+    def get_safe_moves(self, wrld, surroundings, charloc):
         safe_moves = set()
         unsafe_moves = set()
         for deltaX in [-1, 0, 1]:
@@ -90,8 +112,7 @@ class TestCharacter(CharacterEntity):
                 if charloc.x + deltaX + i in range(0, wrld.width()) and wrld.bomb_at(charloc.x + deltaX + i, charloc.y):
                     unsafe_moves.add((deltaX, deltaY))
                 # Check for explosions in the Y axis
-                if charloc.y + deltaY + i in range(0, wrld.height()) and wrld.bomb_at(charloc.x,
-                                                                                      charloc.y + deltaY + i):
+                if charloc.y + deltaY + i in range(0, wrld.height()) and wrld.bomb_at(charloc.x, charloc.y + deltaY + i):
                     unsafe_moves.add((deltaX, deltaY))
 
         # Check the surrounding of monsters, to avoid being locked onto by aggressive monsters
@@ -119,7 +140,7 @@ class TestCharacter(CharacterEntity):
             curr_y + move[1]
             world.me(self).move(move[0], move[1])
             new_world, events = world.next()
-            new_value = self.cal_q(new_world, curr_x, curr_y)
+            new_value = self.get_q(new_world, curr_x, curr_y)
 
             if new_value > best_value
                 best_value = new_value
@@ -132,14 +153,14 @@ class TestCharacter(CharacterEntity):
     # ------------------------------------------------------------------------------------------------------------------------/
 
 
-    def cal_q(self, world, x, y):
-        f_monster = self.monster_dist(world, x, y)
-        f_exit = self.exit_dist(world, x, y)
-        f_cornered = self.cornered_dist()
+    def get_q(self, world, x, y):
+        f_monster = self.get_monster_feature(world, x, y)
+        f_exit = self.get_exit_dist(world, x, y)
+        f_cornered = self.get_cornered_dist()
 
-        self.last_monster_dist = f_monster
-        self.last_exit_dist = f_exit
-        self.last_cornered_dist = f_cornered
+        self.last_monster_feature = f_monster
+        self.last_exit_feature = f_exit
+        self.last_cornered_feature = f_cornered
 
         return (self.w_monster * f_monster) + (self.w_exit * f_exit) + (self.w_cornered * f_cornered)
 
@@ -147,7 +168,7 @@ class TestCharacter(CharacterEntity):
     # ------------------------------------------------------------------------------------------------------------------------/
 
 
-    def monster_dist(self, world, x, y):
+    def get_monster_feature(self, world, x, y):
         monster_positions = self.get_monster_positions(world)
 
         if len(monster_postions) == 0:
@@ -164,10 +185,11 @@ class TestCharacter(CharacterEntity):
             else:
                 path = self.a_star(world.grid, 0, x, y, monster)
                 distances.append(len(path))
+
         return 1 / (1 + min(distances))
 
-    def exit_distance(self, world, x, y):
-        exit = self.find_exit(world)
+    def get_exit_feature(self, world, x, y):
+        exit = self.get_exit(world)
         start = (x,y)
 
         if start == exit:
@@ -175,9 +197,9 @@ class TestCharacter(CharacterEntity):
         path = self.a_star(world.grid, 0, x, y, exit)
         return 1 / (1 + len(path))
 
-    def cornered_dist(self, world, x, y):
-        immediate_moves = self.get_immediate_moves(world, x, y)
-        safe_moves = determine_safe_moves(world, x, y)
+    def get_cornered_feature(self, world, x, y):
+        immediate_moves = self.get_available_moves(world, x, y)
+        safe_moves = get_safe_moves(world, x, y)
         if len(safe_moves) < 3:
             return 1
         else:
@@ -194,7 +216,22 @@ class TestCharacter(CharacterEntity):
             for j in range(world.height()):
                 if world.monsters_at(i, j):
                     monster_postions.append( (i,j) )
+
         return monster_postions
+
+    def get_exit(self, world):
+        w = wrld.width() - 1
+        h = wrld.height() - 1
+
+        while h >= 0:
+            while w >= 0:
+                if world.exit_at(w, h):
+                    return (w, h)
+                w -= 1
+            h -= 1
+            w = wrld.width() - 1
+
+        return (0, 0)
 
     def a_star(self, grid, k, start_x, start_y, goal):
         m, n = len(grid), len(grid[0])
@@ -236,7 +273,62 @@ class TestCharacter(CharacterEntity):
     # ------------------------------------------------------------------------------------------------------------------------/
 
 
-    # TODO
-    def do(self, wrld):
-        # Your code here
+    #TODO
+    def get_reward():
         pass
+
+    #TODO
+    def get_get_next_best():
+        pass
+
+    #TODO
+    def get_differnce():
+        pass
+
+
+    # ------------------------------------------------------------------------------------------------------------------------/
+
+
+    def do(self, wrld):
+        me = wrld.me(self)
+
+        if self.last_best_value != 0:
+            reward = self.get_reward(wrld, me.x, me.y)
+            actual_value = reward + self.discount * self.get_next_best(wrld, me.x, me.y)
+            difference = self.get_differnce(actual_value, self.last_best_value)
+            self.set_weights = (difference, self.last_monster_feature, self.last_exit_feature, self.last_cornered_feature)
+        
+        current_value = 0
+        new_value = 0
+        best_value = 0
+        best_Move = (0,0)
+
+    available_moves = self.get_available_moves(wrld, me.x, me.y)
+    safe_moves = self.safe_moves(wrld, available_moves, me)
+
+    #TODO change get_safe_moves to block exit if a bomb is still waiting to explode
+
+    if len(available_move[6]) > 0:
+        if available_move[6][0] in safe_moves:
+            self.move(available_moves[6][0][0], available_moves[6][0][1])
+        else:
+            #TODO Durdle for a while until bomb explodes
+
+    move = self.q_learn(self, world, safe_moves, x, y)
+    self.last_x = me.x + move[0]
+    self.last_y = me.y + move[1]
+    self.move(move[0], move[1])
+
+    f = open("weights.txt", "w")
+    for i in range(3):
+        if i == 0:
+            w_str1 = "%f\n" % self.w1
+            f.write(w_str1)
+        if i == 1:
+            w_str2 = "%f\n" % self.w2
+            f.write(w_str2)
+        if i == 2:
+            w_str3 = "%f\n" % self.w3
+            f.write(w_str3)
+        i += 1
+    f.close()
