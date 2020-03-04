@@ -148,23 +148,21 @@ class TestCharacter(CharacterEntity):
 
 
     def monster_dist(self, world, x, y):
-        current = (-1, -1)
         monster_positions = self.get_monster_positions(world)
 
-        if len(monsters) == 0:
+        if len(monster_postions) == 0:
             return 0
 
         start = (x,y)
         distances = []
         for monster in monster_positions:
-            current = monster
 
-            if x < 0 or y < 0:
-                return 0
-            if start == current:
+            # if x < 0 or y < 0:
+            #     return 0
+            if start == monster:
                 return 1
             else:
-                path = self.a_star(world, start, current)
+                path = self.a_star(world.grid, 0, x, y, monster)
                 distances.append(len(path))
         return 1 / (1 + min(distances))
 
@@ -174,7 +172,7 @@ class TestCharacter(CharacterEntity):
 
         if start == exit:
             return 1
-        path = self.a_star(world, start, exit)
+        path = self.a_star(world.grid, 0, x, y, exit)
         return 1 / (1 + len(path))
 
     def cornered_dist(self, world, x, y):
@@ -198,46 +196,41 @@ class TestCharacter(CharacterEntity):
                     monster_postions.append( (i,j) )
         return monster_postions
 
-    # TODO 
-    def a_star();
-        pass
-    
-    def a_star(self, grid, k, start_y, start_x):
-		m, n = len(grid), len(grid[0])
+    def a_star(self, grid, k, start_x, start_y, goal):
+        m, n = len(grid), len(grid[0])
 
-		if m + n - 2 <= k:
-			return (m + n - 2 , [], {})
+        if m + n - 2 <= k:
+            return 0
 
-		came_from = {}
+        came_from = {}
 
-		manhattan_distance = lambda y, x: m + n - y - x - 2
-		neighborhood = lambda y, x: [
-			(y, x) for y, x in [(y - 1, x), (y, x + 1), (y + 1, x), (y, x - 1)]
-			if 0 <= y < m and 0 <= x < n
-		]
-        
-		fringe_heap = [(manhattan_distance(start_y, start_x), 0, 0, start_y, start_x)]
-		min_eliminations = defaultdict(lambda: k + 1, {(0, 0): 0})
+        manhattan_distance = lambda y, x: m + n - y - x - 2
+        neighborhood = lambda y, x: [
+            (y, x) for y, x in [(y - 1, x), (y, x + 1), (y + 1, x), (y, x - 1)]
+            if 0 <= y < m and 0 <= x < n
+        ]
 
-		while fringe_heap:
-			estimation, steps, eliminations, curr_y, curr_x = heappop(fringe_heap)
+        fringe_heap = [(manhattan_distance(start_y, start_x), 0, 0, start_y, start_x)]
+        min_eliminations = defaultdict(lambda: k + 1, {(0, 0): 0})
 
-			if (curr_x, curr_y) == (2,2):
-				return (estimation, self.construct_path(came_from, (curr_y, curr_x), start_x, start_y), min_eliminations)
+        while fringe_heap:
+            estimation, steps, eliminations, curr_y, curr_x = heappop(fringe_heap)
 
-			self.set_cell_color(curr_y, curr_x, Fore.RED + Back.GREEN)
-			if estimation - steps <= k - eliminations:
-				return (estimation, self.construct_path(came_from, (curr_y, curr_x), start_x, start_y), min_eliminations)
+            if (curr_y, curr_x) == goal:
+                return steps
+
+            if estimation - steps <= k - eliminations:
+                return steps
             
-			for y, x in neighborhood(curr_y, curr_x):
-				next_eliminations = eliminations + grid[y][x]
+            for y, x in neighborhood(curr_y, curr_x):
+                next_eliminations = eliminations + grid[y][x]
 
-				if next_eliminations < min_eliminations[(y, x)]:
-					came_from[(y,x)] = (curr_y, curr_x)
-					heappush(fringe_heap, (steps + 1 + manhattan_distance(y, x), steps + 1, next_eliminations, y, x))
-					min_eliminations[(y, x)] = next_eliminations
+                if next_eliminations < min_eliminations[(y, x)]:
+                    came_from[(y,x)] = (curr_y, curr_x)
+                    heappush(fringe_heap, (steps + 1 + manhattan_distance(y, x), steps + 1, next_eliminations, y, x))
+                    min_eliminations[(y, x)] = next_eliminations
         
-		return (-1, [], {})
+        return 0
 
 
     # ------------------------------------------------------------------------------------------------------------------------/
