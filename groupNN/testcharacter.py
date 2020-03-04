@@ -110,6 +110,103 @@ class TestCharacter(CharacterEntity):
 
         return safe_moves
 
+    def q_learn(self, world, safe_moves, x, y):
+        best_value = -100
+        best_move = (0,0)
+
+        for move in safe_moves:
+            curr_x = x + move[0] 
+            curr_y + move[1]
+            world.me(self).move(move[0], move[1])
+            new_world, events = world.next()
+            new_value = self.cal_q(new_world, curr_x, curr_y)
+
+            if new_value > best_value
+                best_value = new_value
+                best_move = move
+
+        self.last_best_value = best_value
+        return best_move
+
+
+    # ------------------------------------------------------------------------------------------------------------------------/
+
+
+    def cal_q(self, world, x, y):
+        f_monster = self.monster_dist(world, x, y)
+        f_exit = self.exit_dist(world, x, y)
+        f_cornered = self.cornered_dist()
+
+        self.last_monster_dist = f_monster
+        self.last_exit_dist = f_exit
+        self.last_cornered_dist = f_cornered
+
+        return (self.w_monster * f_monster) + (self.w_exit * f_exit) + (self.w_cornered * f_cornered)
+
+
+    # ------------------------------------------------------------------------------------------------------------------------/
+
+
+    def monster_dist(self, world, x, y):
+        current = (-1, -1)
+        monster_positions = self.get_monster_positions(world)
+
+        if len(monsters) == 0:
+            return 0
+
+        start = (x,y)
+        distances = []
+        for monster in monster_positions:
+            current = monster
+
+            if x < 0 or y < 0:
+                return 0
+            if start == current:
+                return 1
+            else:
+                path = self.a_star(world, start, current)
+                distances.append(len(path))
+        return 1 / (1 + min(distances))
+
+    def exit_distance(self, world, x, y):
+        exit = self.find_exit(world)
+        start = (x,y)
+
+        if start == exit:
+            return 1
+        path = self.a_star(world, start, exit)
+        return 1 / (1 + len(path))
+
+    def cornered_dist(self, world, x, y):
+        immediate_moves = self.get_immediate_moves(world, x, y)
+        safe_moves = determine_safe_moves(world, x, y)
+        if len(safe_moves) < 3:
+            return 1
+        else:
+            return 0
+
+
+    # ------------------------------------------------------------------------------------------------------------------------/
+
+
+    def get_monster_positions(self, world):
+        monster_postions = []
+
+        for i in range(world.width()):
+            for j in range(world.height()):
+                if world.monsters_at(i, j):
+                    monster_postions.append( (i,j) )
+        return monster_postions
+
+    # TODO 
+    def a_star();
+        pass
+
+
+    # ------------------------------------------------------------------------------------------------------------------------/
+
+
+    # TODO
     def do(self, wrld):
         # Your code here
         pass
