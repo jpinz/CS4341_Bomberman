@@ -25,9 +25,9 @@ class TestCharacter(CharacterEntity):
 
     f = open("weights.txt")
     weights = f.read().splitlines()
-    w1=float(weights[0])
-    w2=float(weights[1])
-    w3=float(weights[2])
+    w_monster=float(weights[0])
+    w_exit=float(weights[1])
+    w_cornered=float(weights[2])
     f.close()
 
     # Gives where the character can physically move
@@ -176,10 +176,8 @@ class TestCharacter(CharacterEntity):
 
         start = (x,y)
         distances = []
-        for monster in monster_positions:
 
-            # if x < 0 or y < 0:
-            #     return 0
+        for monster in monster_positions:
             if start == monster:
                 return 1
             else:
@@ -194,12 +192,14 @@ class TestCharacter(CharacterEntity):
 
         if start == exit:
             return 1
+
         path = self.a_star(world.grid, 0, x, y, exit)
         return 1 / (1 + len(path))
 
     def get_cornered_feature(self, world, x, y):
         immediate_moves = self.get_available_moves(world, x, y)
         safe_moves = get_safe_moves(world, x, y)
+
         if len(safe_moves) < 3:
             return 1
         else:
@@ -273,17 +273,33 @@ class TestCharacter(CharacterEntity):
     # ------------------------------------------------------------------------------------------------------------------------/
 
 
-    #TODO
-    def get_reward():
-        pass
+    def get_reward(self, world, x, y):
 
-    #TODO
-    def get_get_next_best():
-        pass
+        if world.monster_at(x,y):
+            return -30
+        elif world.exit_at(x,y):
+            return 75
+        elif world.explosion_at(x,y):
+            return -25
+        elif world.bomb_at(x,y):
+            return -25
+        else:
+            return 1
 
-    #TODO
-    def get_differnce():
-        pass
+    def get_next_best(self, world, safe_moves, x, y):
+        best_value = 0
+
+        for vector in safe_moves:
+            new_value = self.get_q(world, x+vector[0], y+vector[1])
+            if new_value > best_value:
+                best_value = new_value
+
+        return best_value
+
+    def set_weights(self, difference, f_monster, f_exit, f_cornered):
+        self.w_monster = self.w_monster + self.learn_rate * difference * f_monster
+        self.w_exit = self.w_exit + self.learn_rate * difference * f_exit
+        self.w_cornered = self.w_cornered + self.learn_rate * difference * f_cornered
 
 
     # ------------------------------------------------------------------------------------------------------------------------/
@@ -291,20 +307,19 @@ class TestCharacter(CharacterEntity):
 
     def do(self, wrld):
         me = wrld.me(self)
+        available_moves = self.get_available_moves(wrld, me.x, me.y)
+        safe_moves = self.safe_moves(wrld, available_moves, me)
 
         if self.last_best_value != 0:
             reward = self.get_reward(wrld, me.x, me.y)
-            actual_value = reward + self.discount * self.get_next_best(wrld, me.x, me.y)
-            difference = self.get_differnce(actual_value, self.last_best_value)
-            self.set_weights = (difference, self.last_monster_feature, self.last_exit_feature, self.last_cornered_feature)
+            actual_value = reward + self.discount * self.get_next_best(wrld, safe_moves, me.x, me.y)
+            difference = actual_value - self.last_best_value
+            self.set_weights(difference, self.last_monster_feature, self.last_exit_feature, self.last_cornered_feature)
         
         current_value = 0
         new_value = 0
         best_value = 0
         best_Move = (0,0)
-
-    available_moves = self.get_available_moves(wrld, me.x, me.y)
-    safe_moves = self.safe_moves(wrld, available_moves, me)
 
     #TODO change get_safe_moves to block exit if a bomb is still waiting to explode
 
